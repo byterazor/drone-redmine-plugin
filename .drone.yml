@@ -87,7 +87,15 @@ steps:
       - buildah login -u $${USERNAME} -p $${PASSWORD} registry.hub.docker.com
       - buildah manifest push --all drone-redmine:latest docker://registry.hub.docker.com/byterazor/drone-redmine:latest 
       - buildah manifest drone-redmine:latest
-
+  - name: push readme
+    image: byterazor/drone-docker-readme-push:latest
+    settings:
+      REPOSITORY_NAME: byterazor/drone-redmine
+      FILENAME: README.md
+      USERNAME: 
+        from_secret: username
+      PASSWORD: 
+        from_secret: password
 depends_on:
   - build-amd64
   - build-arm64
