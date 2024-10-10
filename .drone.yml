@@ -17,7 +17,7 @@ volumes:
 
 steps:
   - name: build amd64
-    image: quay.io/buildah/stable
+    image: quay.io/buildah/stable:v1.36
     privileged: true
     volumes:
     - name: fedhq-ca-crt
@@ -46,7 +46,7 @@ volumes:
 
 steps:
   - name: build arm64
-    image: quay.io/buildah/stable
+    image: quay.io/buildah/stable:v1.36
     privileged: true
     volumes:
     - name: fedhq-ca-crt
@@ -63,7 +63,7 @@ node_selector:
   kubernetes.io/arch: amd64
   federationhq.de/location: Blumendorf
   federationhq.de/compute: true
-  
+
 volumes:
 - name: fedhq-ca-crt
   config_map:
@@ -73,7 +73,7 @@ volumes:
 
 steps:
   - name: push
-    image: quay.io/buildah/stable
+    image: quay.io/buildah/stable:v1.36
     privileged: true
     environment:
       USERNAME:
