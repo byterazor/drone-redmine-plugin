@@ -6,7 +6,7 @@ WORKDIR /src
 
 RUN git clone  --recurse-submodules https://gitea.federationhq.de/byterazor/redmine-api-cpp.git
 
-RUN cd redmine-api-cpp && mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DENABLE_TESTS=OFF && make -j 4
+RUN cd redmine-api-cpp && mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DENABLE_TESTS=OFF && make -j 1
 
 FROM alpine:latest
 
