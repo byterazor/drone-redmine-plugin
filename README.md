@@ -37,7 +37,7 @@ your business on this image.
 
 ## Prebuild Images
 
-* https://hub.docker.com/repository/docker/byterazor/drone-redmine/general
+* https://hub.docker.com/repository/docker/byterazor/drone-/general
 
 ## Authors
 
