@@ -5,12 +5,12 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #
 
-if [ -z  ${PLUGIN_REDMINE_URL} ]; then
+if [ -z  "${PLUGIN_REDMINE_URL}" ]; then
     echo "ERROR: Please set REDMINE_URL"
     exit -1
 fi
 
-if [ -z  ${PLUGIN_REDMINE_TOKEN} ]; then
+if [ -z  "${PLUGIN_REDMINE_TOKEN}" ]; then
     echo "ERROR: Please set REDMINE_TOKEN"
     exit -1
 fi
@@ -22,11 +22,11 @@ export REDMINE_API_TOKEN=$PLUGIN_REDMINE_TOKEN
 #
 # Upload files to the projects file section
 #
-if [  -n ${PLUGIN_UPLOAD_FILES} ]; then
+if [  -n "${PLUGIN_UPLOAD_FILES}" ]; then
     
     if [ "${PLUGIN_UPLOAD_FILES}" == "true" ]; then
 
-        if [ -z ${PLUGIN_PROJECT_NR} ]; then
+        if [ -z "${PLUGIN_PROJECT_NR}" ]; then
             echo "ERROR: Please set PROJECT_NR (the number not the string identifier)"
             exit -1
         fi
@@ -46,15 +46,15 @@ fi
 #
 # delete a wiki page
 #
-if [ -n ${PLUGIN_DELETE_WIKI_PAGE} ]; then
+if [ -n "${PLUGIN_DELETE_WIKI_PAGE}" ]; then
     if [ "${PLUGIN_DELETE_WIKI_PAGE}" == "true" ]; then
         
-        if [ -z ${PLUGIN_PROJECT_ID} ]; then
+        if [ -z "${PLUGIN_PROJECT_ID}" ]; then
             echo "ERROR: Please set PROJECT_ID when deleting a wiki page (the string identifier)"
             exit -1
         fi
 
-        if [ -z ${PLUGIN_PAGE_NAME} ]; then
+        if [ -z "${PLUGIN_PAGE_NAME}" ]; then
             echo "ERROR: Please set PAGE_NAME when deleting wiki page"
             exit -1
         fi
@@ -68,28 +68,28 @@ fi
 #
 # update a wiki page
 #
-if [ -n ${PLUGIN_UPDATE_WIKI_PAGE}]; then
+if [ -n "${PLUGIN_UPDATE_WIKI_PAGE}" ]; then
     if [ "${PLUGIN_UPDATE_WIKI_PAGE}" == "true" ]; then
 
-        if [ -z ${PLUGIN_PROJECT_ID} ]; then
+        if [ -z "${PLUGIN_PROJECT_ID}" ]; then
             echo "ERROR: Please set PROJECT_ID when updating a wiki page (the string identifier)"
             exit -1
         fi
 
-        if [ -z ${PLUGIN_PAGE_NAME} ]; then
+        if [ -z "${PLUGIN_PAGE_NAME}" ]; then
             echo "ERROR: Please set PAGE_NAME when updating wiki page"
             exit -1
         fi
 
         CMD="redmine-cli wiki updatePage -p ${PLUGIN_PROJECT_ID} --page ${PLUGIN_PAGE_NAME}"
 
-        if [ -n ${PLUGIN_PAGE_CONTENT} ]; then
+        if [ -n "${PLUGIN_PAGE_CONTENT}" ]; then
             CMD="$CMD -c \'${PLUGIN_PAGE_CONTENT}\'"
-        elif [ -n ${PLUGIN_PAGE_FILE} ]; then
+        elif [ -n "${PLUGIN_PAGE_FILE}" ]; then
             CMD="$CMD -f \"${PLUGIN_PAGE_FILE}\""
         fi
 
-        if [ -n ${PLUGIN_PAGE_ATTACHEMENTS} ]; then
+        if [ -n "${PLUGIN_PAGE_ATTACHEMENTS}" ]; then
             for a in ${PLUGIN_PAGE_ATTACHEMENTS}; do
                 CMD="$CMD -a \"$a\""
             done
