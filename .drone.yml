@@ -5,7 +5,6 @@ platform:
   arch: amd64
 node_selector:
   kubernetes.io/arch: amd64
-  federationhq.de/location: Blumendorf
   federationhq.de/compute: true
 
 volumes:
