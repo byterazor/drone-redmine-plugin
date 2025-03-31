@@ -18,20 +18,6 @@ fi
 export REDMINE_URL=$PLUGIN_REDMINE_URL
 export REDMINE_API_TOKEN=$PLUGIN_REDMINE_TOKEN
 
-#
-# some debugging
-#
-pwd 
-
-ls -al
-
-cat /drone/src/status.md
-
-echo ${PLUGIN_PAGE_FILE}
-
-cat ${PLUGIN_PAGE_FILE}
-
-#
 # Upload files to the projects file section
 #
 if [  -n "${PLUGIN_UPLOAD_FILES}" ]; then
