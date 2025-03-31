@@ -18,6 +18,12 @@ fi
 export REDMINE_URL=$PLUGIN_REDMINE_URL
 export REDMINE_API_TOKEN=$PLUGIN_REDMINE_TOKEN
 
+#
+# some debugging
+#
+pwd 
+
+ls -al
 
 #
 # Upload files to the projects file section
