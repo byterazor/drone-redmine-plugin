@@ -18,6 +18,9 @@ fi
 export REDMINE_URL=$PLUGIN_REDMINE_URL
 export REDMINE_API_TOKEN=$PLUGIN_REDMINE_TOKEN
 
+echo $REDMINE_URL 
+echo $REDMINE_API_TOKEN
+
 # Upload files to the projects file section
 #
 if [  -n "${PLUGIN_UPLOAD_FILES}" ]; then
