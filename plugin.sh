@@ -27,6 +27,10 @@ ls -al
 
 cat /drone/src/status.md
 
+echo ${PLUGIN_PAGE_FILE}
+
+cat ${PLUGIN_PAGE_FILE}
+
 #
 # Upload files to the projects file section
 #
@@ -103,7 +107,7 @@ if [ -n "${PLUGIN_UPDATE_WIKI_PAGE}" ]; then
             done
         fi
         echo $CMD 
-        
+
         $CMD
     fi
 fi
