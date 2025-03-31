@@ -25,6 +25,8 @@ pwd
 
 ls -al
 
+cat /drone/src/status.md
+
 #
 # Upload files to the projects file section
 #
