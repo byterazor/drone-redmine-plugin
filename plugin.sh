@@ -84,7 +84,7 @@ if [ -n "${PLUGIN_UPDATE_WIKI_PAGE}" ]; then
         if [ -n "${PLUGIN_PAGE_CONTENT}" ]; then
             CMD="$CMD -c \'${PLUGIN_PAGE_CONTENT}\'"
         elif [ -n "${PLUGIN_PAGE_FILE}" ]; then
-            CMD="$CMD -f \"${PLUGIN_PAGE_FILE}\""
+            CMD="$CMD -f ${PLUGIN_PAGE_FILE}"
         fi
 
         if [ -n "${PLUGIN_PAGE_ATTACHEMENTS}" ]; then
