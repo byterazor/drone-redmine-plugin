@@ -102,6 +102,7 @@ if [ -n "${PLUGIN_UPDATE_WIKI_PAGE}" ]; then
                 CMD="$CMD -a \"$a\""
             done
         fi
+        echo $CMD 
         
         $CMD
     fi
