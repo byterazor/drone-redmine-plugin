@@ -97,7 +97,7 @@ if [ -n "${PLUGIN_UPDATE_WIKI_PAGE}" ]; then
 
         if [ -n "${PLUGIN_PAGE_ATTACHEMENTS}" ]; then
             for a in ${PLUGIN_PAGE_ATTACHEMENTS}; do
-                CMD="$CMD -a \"$a\""
+                CMD="$CMD -a $a"
             done
         fi
         echo $CMD 
