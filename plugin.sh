@@ -21,6 +21,11 @@ export REDMINE_API_TOKEN=$PLUGIN_REDMINE_TOKEN
 echo $REDMINE_URL 
 echo $REDMINE_API_TOKEN
 
+if [ -z "${PLUGIN_PAGE_PARENT}" ]; then 
+    PLUGIN_PAGE_PARENT=""
+fi
+
+#
 # Upload files to the projects file section
 #
 if [  -n "${PLUGIN_UPLOAD_FILES}" ]; then
@@ -82,7 +87,7 @@ if [ -n "${PLUGIN_UPDATE_WIKI_PAGE}" ]; then
             exit -1
         fi
 
-        CMD="redmine-cli wiki updatePage -p ${PLUGIN_PROJECT_ID} --page ${PLUGIN_PAGE_NAME}"
+        CMD="redmine-cli wiki updatePage -p ${PLUGIN_PROJECT_ID} --page ${PLUGIN_PAGE_NAME} --parent \"${PLUGIN_PAGE_PARENT}\" "
 
         if [ -n "${PLUGIN_PAGE_CONTENT}" ]; then
             CMD="$CMD -c \'${PLUGIN_PAGE_CONTENT}\'"
