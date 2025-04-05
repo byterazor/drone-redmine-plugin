@@ -72,6 +72,28 @@ fi
 
 
 #
+# create wiki page if not exist
+#
+if [ -n "${PLUGIN_CREATE_IF_NOT_EXIST_WIKI_PAGE}" ]; then
+
+        if [ -z "${PLUGIN_PROJECT_ID}" ]; then
+            echo "ERROR: Please set PROJECT_ID when updating a wiki page (the string identifier)"
+            exit -1
+        fi
+
+        if [ -z "${PLUGIN_PAGE_NAME}" ]; then
+            echo "ERROR: Please set PAGE_NAME when updating wiki page"
+            exit -1
+        fi
+
+        redmine-cli wiki getPage -p ${PLUGIN_PROJECT_ID} --page ${PLUGIN_PAGE_NAME} >/dev/null
+
+        if  [ $? -eq 1 ]; then
+            redmine-cli wiki updatePage -p ${PLUGIN_PROJECT_ID} --page ${PLUGIN_PAGE_NAME} -c " "
+        fi
+fi
+
+#
 # update a wiki page
 #
 if [ -n "${PLUGIN_UPDATE_WIKI_PAGE}" ]; then
