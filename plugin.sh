@@ -22,7 +22,7 @@ echo $REDMINE_URL
 echo $REDMINE_API_TOKEN
 
 if [ -z "${PLUGIN_PAGE_PARENT}" ]; then 
-    PLUGIN_PAGE_PARENT=""
+    PLUGIN_PAGE_PARENT="\"\""
 fi
 
 #
