@@ -87,7 +87,7 @@ if [ -n "${PLUGIN_UPDATE_WIKI_PAGE}" ]; then
             exit -1
         fi
 
-        CMD="redmine-cli wiki updatePage -p ${PLUGIN_PROJECT_ID} --page ${PLUGIN_PAGE_NAME} --parent \"${PLUGIN_PAGE_PARENT}\" "
+        CMD="redmine-cli wiki updatePage -p ${PLUGIN_PROJECT_ID} --page ${PLUGIN_PAGE_NAME} --parent ${PLUGIN_PAGE_PARENT} "
 
         if [ -n "${PLUGIN_PAGE_CONTENT}" ]; then
             CMD="$CMD -c \'${PLUGIN_PAGE_CONTENT}\'"
