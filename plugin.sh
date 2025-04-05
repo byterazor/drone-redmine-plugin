@@ -89,7 +89,7 @@ if [ -n "${PLUGIN_CREATE_IF_NOT_EXIST_WIKI_PAGE}" ]; then
         redmine-cli wiki getPage -p ${PLUGIN_PROJECT_ID} --page ${PLUGIN_PAGE_NAME} >/dev/null
 
         if  [ $? -eq 1 ]; then
-            redmine-cli wiki updatePage -p ${PLUGIN_PROJECT_ID} --page ${PLUGIN_PAGE_NAME} -c " "
+            redmine-cli wiki updatePage -p ${PLUGIN_PROJECT_ID} --page ${PLUGIN_PAGE_NAME} -c "empty"
         fi
 fi
 
