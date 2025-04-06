@@ -22,6 +22,23 @@ echo $REDMINE_URL
 echo $REDMINE_API_TOKEN
 
 #
+# replace non usable chars in page names
+# 
+if [ -z "${PLUGIN_PAGE_NAME}" ]; then
+
+    NEW=$(echo ${PLUGIN_PAGE_NAME} | sed 's/\./_/g')
+    export PLUGIN_PAGE_NAME=${NEW}
+
+fi
+
+if [ -z "${PLUGIN_PAGE_PARENT}" ]; then
+
+    NEW=$(echo ${PLUGIN_PAGE_PARENT} | sed 's/\./_/g')
+    export PLUGIN_PAGE_PARENT=${NEW}
+
+fi
+
+#
 # Upload files to the projects file section
 #
 if [  -n "${PLUGIN_UPLOAD_FILES}" ]; then
