@@ -19,8 +19,8 @@ local versions = [
         dir: ".",
     },
     {
-    commit: "v1.0.0",
-    tag: "1.0.0",
+    commit: "v1.0.1",
+    tag: "1.0.1",
     additional_tags: ["1.0","1"],
     dir: ".",
 }
