@@ -231,7 +231,8 @@ local build_status_update() = [
                     {
                         event:
                             [
-                                "push"
+                                "push",
+                                "cron"
                             ],
                         repo:
                             [
