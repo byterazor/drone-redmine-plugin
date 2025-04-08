@@ -20,7 +20,7 @@ local versions = [
     },
     {
     commit: "v1.0.1",
-    tag: "1.0.1git push",
+    tag: "1.0.1",
     additional_tags: ["1.0","1"],
     dir: ".",
 }
