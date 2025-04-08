@@ -49,6 +49,7 @@ getGitCommits()
 {
     local release=$1
 
+    git fetch -t
     local startTag=$(git describe --tags --abbrev=0 ${release}^)
     
     if [ -z "$startTag" ]; then
