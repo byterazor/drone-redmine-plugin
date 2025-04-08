@@ -11,15 +11,14 @@ local REDMINE_URL="https://rm.byterazor.de";
 
 local MAIN_REPO="Container/drone-redmine-plugin";
 
-local version_dev = 
-{
+local version_dev={
     gitcommit: "HEAD",
     tag: "dev",
     additional_tags: [],
     dir: ".",
 };
 
-local version_1_0_0 = 
+local version_1_0_0() = 
 {
     gitcommit: "v1.0.0",
     tag: "1.0.0",
@@ -267,14 +266,6 @@ local build_status_update() = [
                     }
             }
         ],
-        trigger:
-            {
-                status:
-                    [
-                        "success",
-                        "failure"
-                    ]
-            },
         depends_on:
             [
                push_github
