@@ -20,7 +20,7 @@ local versions = [
     },
     {
     commit: "v1.0.1",
-    tag: "1.0.1",
+    tag: "1.0.1git push",
     additional_tags: ["1.0","1"],
     dir: ".",
 }
@@ -168,6 +168,7 @@ local push_pipelines(versions, architectures) = [
             ]
         }
         for version in versions
+        
 ];
 
 local push_github() = 
@@ -198,6 +199,39 @@ local push_github() =
     [
         "push-"+version.tag
             for version in versions
+    ]
+}
+];
+
+local docker_readme() = 
+[
+    {
+    kind: "pipeline",
+    type: "kubernetes",
+    name: "docker-readme-upload",
+    node_selector: {
+        "federationhq.de/location": "Blumendorf",
+    },
+    steps: [
+        {
+            name: "github-mirror",
+            image: "byterazor/drone-docker-readme-push:latest",
+            pull: "always",
+            settings: {
+                REPOSITORY_NAME: "byterazor/" + image_name,
+                FILENAME: "README.md",
+                USERNAME: {
+                    from_secret: "username"
+                },
+                PASSWORD: {
+                    from_secret: "password"
+                }
+            }
+        }
+    ],
+    depends_on:
+    [
+        "mirror-to-github"
     ]
 }
 ];
@@ -271,7 +305,7 @@ local build_status_update() = [
         ],
         depends_on:
             [
-               "mirror-to-github"
+               "docker-readme-upload"
             ]
 
     }
@@ -280,7 +314,7 @@ local build_status_update() = [
 
 
 
-    build_pipelines(architectures) + push_pipelines(versions,architectures) + push_github() + build_status_update() +
+    build_pipelines(architectures) + push_pipelines(versions,architectures) + push_github() + docker_readme() + build_status_update() +
     [
         {
     kind: "secret",
