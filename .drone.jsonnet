@@ -11,24 +11,20 @@ local REDMINE_URL="https://rm.byterazor.de";
 
 local MAIN_REPO="Container/drone-redmine-plugin";
 
-local version_dev={
-    gitcommit: "HEAD",
-    tag: "dev",
-    additional_tags: [],
-    dir: ".",
-};
-
-local version_1_0_0() = 
-{
-    gitcommit: "v1.0.0",
+local versions = [
+    {
+        commit: "HEAD",
+        tag: "dev",
+        additional_tags: [],
+        dir: ".",
+    },
+    {
+    commit: "v1.0.0",
     tag: "1.0.0",
     additional_tags: ["1.0","1"],
     dir: ".",
-};
-
-
-local versions = [version_dev, version_1_0_0];
-
+}
+];
 
 local build_steps(versions,arch) = [
     {
@@ -44,7 +40,7 @@ local build_steps(versions,arch) = [
         }
         ],
         commands: [
-            "git checkout " + version.gitcommit,
+            "git chechout " + version.commit,
             "scripts/setupEnvironment.sh",
             "cd " + version.dir + ";" + 'buildah bud --network host -t "registry.cloud.federationhq.de/' + image_name + ':' +version.tag + "-" + arch + '" --arch ' + arch,
             'buildah push --all registry.cloud.federationhq.de/'+ image_name+':'+version.tag + "-" + arch
@@ -172,7 +168,9 @@ local push_pipelines(versions, architectures) = [
         for version in versions
 ];
 
-local push_github = {
+local push_github() = 
+[
+    {
     kind: "pipeline",
     type: "kubernetes",
     name: "mirror-to-github",
@@ -199,7 +197,9 @@ local push_github = {
         "push-"+version.tag
             for version in versions
     ]
-};
+}
+];
+
 
 local build_status_update() = [
     {
@@ -268,7 +268,7 @@ local build_status_update() = [
         ],
         depends_on:
             [
-               push_github
+               "push_github"
             ]
 
     }
@@ -277,10 +277,9 @@ local build_status_update() = [
 
 
 
-
-    build_pipelines(architectures) + push_pipelines(versions,architectures) + [push_github] + build_status_update() +
+    build_pipelines(architectures) + push_pipelines(versions,architectures) + push_github() + build_status_update() +
     [
-{
+        {
     kind: "secret",
     name: "REDMINE_TOKEN",
     get:{
