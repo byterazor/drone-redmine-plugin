@@ -268,7 +268,7 @@ local build_status_update() = [
         ],
         depends_on:
             [
-               "push_github"
+               "mirror-to-github"
             ]
 
     }
