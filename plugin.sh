@@ -118,7 +118,7 @@ updateArtifacts()
     content=$(cat artifacts.md)
 
     deleteWikiPage $page $pid
-    updateWikiPage $page $pid $content $parent $artifacts
+    updateWikiPage $page $pid "$content" $parent $artifacts
 
 }
 
@@ -131,7 +131,7 @@ createBranches()
         content="### Branches
                 
 {{child_pages(branches)}}"
-        updateWikiPage "branches" $pid $content "" ""
+        updateWikiPage "branches" $pid "$content" "" ""
     fi
 
 }
@@ -221,7 +221,7 @@ updateBranchStatus()
     echo "{{child_pages()}}" >> status.md
 
     content=$(cat status.md) 
-    updateWikiPage $branch $pid $content "branches"
+    updateWikiPage $branch $pid "$content" "branches"
 
 }
 
