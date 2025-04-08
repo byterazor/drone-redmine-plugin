@@ -1,8 +1,260 @@
 #!/bin/bash
+set -x 
+
+
+
+ACTION=${PLUGIN_ACTION}
+
+gitNrTags()
+{
+    nr=$(git tag | wc -l)
+
+    return $nr
+}
+
+doesPageExist()
+{
+    local page=$1
+    local pid=$2 
+
+    if [ -z "$page" -o -z "$pid" ]; then
+        echo "parameter missing - call $0 <page> <project id>"
+        exit 1
+    fi
+
+
+    redmine-cli wiki getPage -p ${pid} --page ${page} >/dev/null
+
+    if  [ $? -eq 1 ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+deleteWikiPage()
+{
+    local page=$1
+    local pid=$2 
+
+    if [ -z "$page" -o -z "$pid" ]; then
+        echo "parameter missing - call deleteWikiPage <page> <project id>"
+        exit 1
+    fi 
+    redmine-cli wiki deletePage -p ${pid} --page ${page}
+
+}
+
+getGitCommits()
+{
+    local release=$1
+
+    local startTag=$(git describe --tags --abbrev=0 ${release}^)
+    
+    if [ -z "$startTag" ]; then
+        startTag=$(git rev-list --max-parents=0 HEAD)
+    fi
+
+    git log --pretty=oneline ${startTag}...${release} | egrep "(feat|fix)" | awk '{$1 = "";  print "- "$0;}'
+
+}
+
+updateWikiPage()
+{
+    local page=$1
+    local pid=$2 
+    local content=$3
+    local parent=$4
+    local artifacts=$5
+
+    if [ -z "$page" -o -z "$pid" ]; then
+        echo "parameter missing - call $0 <page> <project id>"
+        exit 1
+    fi
+
+    NEW=$(echo ${page} | sed 's/\./_/g')
+    page=$NEW
+
+    NEW=$(echo ${parent} | sed 's/\./_/g')
+    parent=$NEW
+
+    CMDP=""    
+    if [ -n "${parent}" ]; then
+        doesPageExist $parent $pid
+        if [ $? == 0  ]; then
+            echo "error: parent page ${parent} does not exist. not updating ${page}"
+            return
+        fi
+        
+        CMDP=" --parent ${parent}"
+    fi
+
+    CMDA=""
+    if [ -n "${artifacts}" ]; then
+        for a in $artifacts; do
+            CMDA="$CMDA -a $a ";
+        done
+    fi
+
+    redmine-cli wiki updatePage -p $pid --page $page -c "${content}" ${CMDP} ${CMDA}
+}
+
+updateArtifacts()
+{
+    local page=$1
+    local parent=$2
+    local pid=$3
+    local subname=$4
+    local title=$5
+    shift 5
+    local artifacts=$@
+
+    
+    echo "### $title" > artifacts.md
+    for a in $artifacts; do
+        echo "- attachment:${a}" >> artifacts.md
+    done
+
+    content=$(cat artifacts.md)
+
+    deleteWikiPage $page $pid
+    updateWikiPage $page $pid $content $parent $artifacts
+
+}
+
+createBranches()
+{
+    local pid=$1
+
+    doesPageExist "branches" $pid
+    if [ $? == 0 ]; then
+        content="### Branches
+                
+{{child_pages(branches)}}"
+        updateWikiPage "branches" $pid $content "" ""
+    fi
+
+}
+
+createReleases()
+{
+    local pid=$1
+
+    doesPageExist "releases" $pid
+    if [ $? == 0 ]; then
+        content="### Releases
+                
+{{child_pages(releases)}}"
+        updateWikiPage "releases" $pid "$content" "" ""
+    fi
+
+}
+
+updateBranchArtifacts()
+{
+    local branch=$1
+    local pid=$2
+    local artefact_group=$3
+    local artifacts=$4
+
+    createBranches $pid
+    doesPageExist $branch $pid
+
+    if [ $? == 0 ]; then
+        redmine-cli wiki updatePage -p ${pid} --page ${branch} --parent "branches" -c "empty"
+    fi
+
+    updateArtifacts "branch_artifacts_${branch}_${artefact_group}" ${branch} ${pid} ${artefact_group} "Artifacts for ${artefact_group}" $artifacts
+}
+
+updateReleaseArtifacts()
+{
+    local release=$1
+    local pid=$2
+    local artefact_group=$3
+    local artifacts=$4
+
+    createReleases $pid
+    doesPageExist $release $pid
+
+    if [ $? == 0 ]; then
+        redmine-cli wiki updatePage -p ${pid} --page ${release} --parent "releases" -c "empty"
+    fi
+
+    updateArtifacts "release_artifacts_${release}_${artefact_group}" ${release} ${pid} ${artefact_group} "Artifacts for ${artefact_group}" $artifacts
+}
+
+
+badge()
+{
+    local name=$1
+    local value=$2
+    local color=$3
+    local desc=$4
+
+    echo -n "![${desc}](https://img.shields.io/badge/${name}-${value}-${color})"
+}
+
+updateBranchStatus()
+{
+    local branch=$1
+    local pid=$2
+    local status=$3
+
+    color=red
+    if [ "$status" == "success" ]; then
+        color=green
+    fi
+
+    createBranches $pid
+    echo "### Build Status for Branch ${branch}" > status.md
+    badge branch ${branch} blue "Branch Badge" >> status.md
+    badge CI--CD enabled green "CI-CD enabled" >> status.md
+    badge build $status $color "Build Status" >> status.md
+    echo >> status.md
+    echo >> status.md
+    echo -n "**Last Build:** " >> status.md
+    date >> status.md
+    echo >> status.md
+    echo >> status.md
+    echo "#### Artifacts" >> status.md
+    echo "{{child_pages()}}" >> status.md
+
+    content=$(cat status.md) 
+    updateWikiPage $branch $pid $content "branches"
+
+}
+
+updateReleaseStatus()
+{
+    local release=$1
+    local pid=$2
+
+    createReleases $pid
+
+    echo "### Release ${release}" > status.md
+    echo >> status.md
+    echo "{{toc}}" >> status.md
+    echo >> status.md
+    badge release ${release} blue "Release Badge" >> status.md
+    echo >> status.md
+    echo >> status.md
+    echo -n "**Release Date:** " >> status.md
+    date >> status.md
+    echo >> status.md
+    echo >> status.md
+    echo "#### Included Commits" >> status.md
+    getGitCommits $release >> status.md
+    echo "#### Artifacts" >> status.md
+    echo "{{child_pages()}}" >> status.md
+
+    content=$(cat status.md) 
+    updateWikiPage $release $pid "$content" "releases" ""
+
+}
+
 #
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# main  program
 #
 
 if [ -z  "${PLUGIN_REDMINE_URL}" ]; then
@@ -18,129 +270,12 @@ fi
 export REDMINE_URL=$PLUGIN_REDMINE_URL
 export REDMINE_API_TOKEN=$PLUGIN_REDMINE_TOKEN
 
-echo $REDMINE_URL 
-echo $REDMINE_API_TOKEN
 
-#
-# replace non usable chars in page names
-# 
-if [ -n "${PLUGIN_PAGE_NAME}" ]; then
-
-    NEW=$(echo ${PLUGIN_PAGE_NAME} | sed 's/\./_/g')
-    export PLUGIN_PAGE_NAME=${NEW}
-
-fi
-
-if [ -n "${PLUGIN_PAGE_PARENT}" ]; then
-
-    NEW=$(echo ${PLUGIN_PAGE_PARENT} | sed 's/\./_/g')
-    export PLUGIN_PAGE_PARENT=${NEW}
-
-fi
-
-#
-# Upload files to the projects file section
-#
-if [  -n "${PLUGIN_UPLOAD_FILES}" ]; then
-    
-    if [ "${PLUGIN_UPLOAD_FILES}" == "true" ]; then
-
-        if [ -z "${PLUGIN_PROJECT_NR}" ]; then
-            echo "ERROR: Please set PROJECT_NR (the number not the string identifier)"
-            exit -1
-        fi
-
-
-        for f in  $PLUGIN_FILES; do
-            FPATH=$(echo $f | cut -d ':' -f 1)
-            NAME=$(echo $f | cut -d ':' -f 2)
-            DESC=$(echo $f | cut -d ':' -f 3)
-            VERS=$(echo $f | cut -d ':' -f 4)
-
-            redmine-cli project upload -p ${PLUGIN_PROJECT_NR} -f ${NAME} -d ${DESC} -v ${VERS} $FPATH
-        done
-    fi
-fi
-
-#
-# delete a wiki page
-#
-if [ -n "${PLUGIN_DELETE_WIKI_PAGE}" ]; then
-    if [ "${PLUGIN_DELETE_WIKI_PAGE}" == "true" ]; then
-        
-        if [ -z "${PLUGIN_PROJECT_ID}" ]; then
-            echo "ERROR: Please set PROJECT_ID when deleting a wiki page (the string identifier)"
-            exit -1
-        fi
-
-        if [ -z "${PLUGIN_PAGE_NAME}" ]; then
-            echo "ERROR: Please set PAGE_NAME when deleting wiki page"
-            exit -1
-        fi
-
-        echo "redmine-cli wiki deletePage -p ${PLUGIN_PROJECT_ID} --page ${PLUGIN_PAGE_NAME}"
-        redmine-cli wiki deletePage -p ${PLUGIN_PROJECT_ID} --page ${PLUGIN_PAGE_NAME}
-    fi
-fi
-
-
-#
-# create wiki page if not exist
-#
-if [ -n "${PLUGIN_CREATE_IF_NOT_EXIST_WIKI_PAGE}" ]; then
-
-        if [ -z "${PLUGIN_PROJECT_ID}" ]; then
-            echo "ERROR: Please set PROJECT_ID when updating a wiki page (the string identifier)"
-            exit -1
-        fi
-
-        if [ -z "${PLUGIN_PAGE_NAME}" ]; then
-            echo "ERROR: Please set PAGE_NAME when updating wiki page"
-            exit -1
-        fi
-
-        redmine-cli wiki getPage -p ${PLUGIN_PROJECT_ID} --page ${PLUGIN_PAGE_NAME} >/dev/null
-
-        if  [ $? -eq 1 ]; then
-            redmine-cli wiki updatePage -p ${PLUGIN_PROJECT_ID} --page ${PLUGIN_PAGE_NAME} -c "empty"
-        fi
-fi
-
-#
-# update a wiki page
-#
-if [ -n "${PLUGIN_UPDATE_WIKI_PAGE}" ]; then
-    if [ "${PLUGIN_UPDATE_WIKI_PAGE}" == "true" ]; then
-
-        if [ -z "${PLUGIN_PROJECT_ID}" ]; then
-            echo "ERROR: Please set PROJECT_ID when updating a wiki page (the string identifier)"
-            exit -1
-        fi
-
-        if [ -z "${PLUGIN_PAGE_NAME}" ]; then
-            echo "ERROR: Please set PAGE_NAME when updating wiki page"
-            exit -1
-        fi
-
-        CMD="redmine-cli wiki updatePage -p ${PLUGIN_PROJECT_ID} --page ${PLUGIN_PAGE_NAME} "
-        
-        if [ -n "${PLUGIN_PAGE_PARENT}" ]; then 
-            CMD="$CMD --parent ${PLUGIN_PAGE_PARENT} "
-        fi
-
-        if [ -n "${PLUGIN_PAGE_CONTENT}" ]; then
-            CMD="$CMD -c \'${PLUGIN_PAGE_CONTENT}\'"
-        elif [ -n "${PLUGIN_PAGE_FILE}" ]; then
-            CMD="$CMD -f ${PLUGIN_PAGE_FILE}"
-        fi
-
-        if [ -n "${PLUGIN_PAGE_ATTACHEMENTS}" ]; then
-            for a in ${PLUGIN_PAGE_ATTACHEMENTS}; do
-                CMD="$CMD -a $a"
-            done
-        fi
-        echo $CMD 
-
-        $CMD
-    fi
-fi
+case ${ACTION} in
+    updateBranchStatus) updateBranchStatus ${PLUGIN_BRANCH} ${PLUGIN_PROJECT_ID} ${PLUGIN_BUILD_STATUS};;
+    updateBranchStatusStages) updateBranchStatusStages ${PLUGIN_BRANCH} ${PLUGIN_PROJECT_ID} ;;
+    updateReleaseStatus) updateReleaseStatus ${PLUGIN_RELEASE} ${PLUGIN_PROJECT_ID} ;;
+    updateBranchArtifacts) updateBranchArtifacts ${PLUGIN_BRANCH} ${PLUGIN_PROJECT_ID} "${PLUGIN_ARTEFACT_GROUP}" "${PLUGIN_ARTIFACTS}" ;;
+    updateReleaseArtifacts) updateReleaseArtifacts ${PLUGIN_RELEASE} ${PLUGIN_PROJECT_ID} "${PLUGIN_ARTEFACT_GROUP}" "${PLUGIN_ARTIFACTS}";; 
+    *) echo  "unknown action ${ACTION}";;
+esac
