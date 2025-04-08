@@ -40,6 +40,7 @@ local build_steps(versions,arch) = [
         }
         ],
         commands: [
+            "yum -q -y install git",
             "git chechout " + version.commit,
             "scripts/setupEnvironment.sh",
             "cd " + version.dir + ";" + 'buildah bud --network host -t "registry.cloud.federationhq.de/' + image_name + ':' +version.tag + "-" + arch + '" --arch ' + arch,
