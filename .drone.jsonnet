@@ -287,7 +287,7 @@ local build_status_update() = [
 
 
 
-    build_pipelines(architectures) + push_pipelines(versions,architectures) + [push_github] + [build_status_update()] +
+    build_pipelines(architectures) + push_pipelines(versions,architectures) + [push_github] + build_status_update() +
     [
 {
     kind: "secret",
