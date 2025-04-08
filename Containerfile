@@ -6,11 +6,11 @@ WORKDIR /src
 
 RUN git clone  --recurse-submodules https://gitea.federationhq.de/byterazor/redmine-api-cpp.git
 
-RUN cd redmine-api-cpp && mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DENABLE_TESTS=OFF && make -j 4
+RUN cd redmine-api-cpp && mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DENABLE_TESTS=OFF && make -j 2
 
 FROM alpine:latest
 
-RUN apk update && apk add --no-cache tini bash ca-certificates openssl libgcc libstdc++ libcurl coreutils
+RUN apk update && apk add --no-cache tini bash ca-certificates openssl libgcc libstdc++ libcurl coreutils git
 
 COPY --from=builder /src/redmine-api-cpp/build/redmine-cli /usr/local/bin/redmine-cli
 
