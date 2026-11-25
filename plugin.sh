@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x 
+set -x
 
 
 
@@ -15,7 +15,7 @@ gitNrTags()
 doesPageExist()
 {
     local page=$1
-    local pid=$2 
+    local pid=$2
 
     if [ -z "$page" -o -z "$pid" ]; then
         echo "parameter missing - call $0 <page> <project id>"
@@ -35,12 +35,12 @@ doesPageExist()
 deleteWikiPage()
 {
     local page=$1
-    local pid=$2 
+    local pid=$2
 
     if [ -z "$page" -o -z "$pid" ]; then
         echo "parameter missing - call deleteWikiPage <page> <project id>"
         exit 1
-    fi 
+    fi
     redmine-cli wiki deletePage -p ${pid} --page ${page}
 
 }
@@ -51,7 +51,7 @@ getGitCommits()
 
     git fetch -t
     local startTag=$(git describe --tags --abbrev=0 ${release}^)
-    
+
     if [ -z "$startTag" ]; then
         startTag=$(git rev-list --max-parents=0 HEAD)
     fi
@@ -63,7 +63,7 @@ getGitCommits()
 updateWikiPage()
 {
     local page=$1
-    local pid=$2 
+    local pid=$2
     local content=$3
     local parent=$4
     local artifacts=$5
@@ -79,14 +79,14 @@ updateWikiPage()
     NEW=$(echo ${parent} | sed 's/\./_/g')
     parent=$NEW
 
-    CMDP=""    
+    CMDP=""
     if [ -n "${parent}" ]; then
         doesPageExist $parent $pid
         if [ $? == 0  ]; then
             echo "error: parent page ${parent} does not exist. not updating ${page}"
             return
         fi
-        
+
         CMDP=" --parent ${parent}"
     fi
 
@@ -110,7 +110,7 @@ updateArtifacts()
     shift 5
     local artifacts=$@
 
-    
+
     echo "### $title" > artifacts.md
     for a in $artifacts; do
         echo "- attachment:${a}" >> artifacts.md
@@ -130,7 +130,7 @@ createBranches()
     doesPageExist "branches" $pid
     if [ $? == 0 ]; then
         content="### Branches
-                
+
 {{child_pages(branches)}}"
         updateWikiPage "branches" $pid "$content" "" ""
     fi
@@ -144,7 +144,7 @@ createReleases()
     doesPageExist "releases" $pid
     if [ $? == 0 ]; then
         content="### Releases
-                
+
 {{child_pages(releases)}}"
         updateWikiPage "releases" $pid "$content" "" ""
     fi
@@ -221,7 +221,7 @@ updateBranchStatus()
     echo "#### Artifacts" >> status.md
     echo "{{child_pages()}}" >> status.md
 
-    content=$(cat status.md) 
+    content=$(cat status.md)
     updateWikiPage $branch $pid "$content" "branches"
 
 }
@@ -249,7 +249,7 @@ updateReleaseStatus()
     echo "#### Artifacts" >> status.md
     echo "{{child_pages()}}" >> status.md
 
-    content=$(cat status.md) 
+    content=$(cat status.md)
     updateWikiPage $release $pid "$content" "releases" ""
 
 }
@@ -264,8 +264,16 @@ createProject()
 
     local pname="${PLUGIN_PROJECT_NAME:-$pid}"
     local category="${PLUGIN_CATEGORY-${DRONE_REPO_NAME}}"
+    local parent="${PLUGIN_PROJECT_PARENT-}"
+    local public="${PLUGIN_PROJECT_PUBLIC-}"
 
-    if ! redmine-cli project create-if-not-exist "$pname" "$pid"; then
+    local extra=""
+    [ -n "$parent" ] && extra="$extra --parent $parent"
+    if [ -n "$public" ] && [ "$public" != "false" ] && [ "$public" != "0" ]; then
+        extra="$extra --public"
+    fi
+
+    if ! redmine-cli project create-if-not-exist "$pname" "$pid" $extra; then
         echo "error: failed to create project ${pid}"
         exit 1
     fi
@@ -477,16 +485,16 @@ fi
 export REDMINE_URL=$PLUGIN_REDMINE_URL
 export REDMINE_API_TOKEN=$PLUGIN_REDMINE_TOKEN
 
+export
 
 case ${ACTION} in
     updateBranchStatus) updateBranchStatus ${PLUGIN_BRANCH} ${PLUGIN_PROJECT_ID} ${PLUGIN_BUILD_STATUS};;
     updateBranchStatusStages) updateBranchStatusStages ${PLUGIN_BRANCH} ${PLUGIN_PROJECT_ID} ;;
     updateReleaseStatus) updateReleaseStatus ${PLUGIN_RELEASE} ${PLUGIN_PROJECT_ID} ;;
     updateBranchArtifacts) updateBranchArtifacts ${PLUGIN_BRANCH} ${PLUGIN_PROJECT_ID} "${PLUGIN_ARTEFACT_GROUP}" "${PLUGIN_ARTIFACTS}" ;;
-    updateReleaseArtifacts) updateReleaseArtifacts ${PLUGIN_RELEASE} ${PLUGIN_PROJECT_ID} "${PLUGIN_ARTEFACT_GROUP}" "${PLUGIN_ARTIFACTS}";; 
+    updateReleaseArtifacts) updateReleaseArtifacts ${PLUGIN_RELEASE} ${PLUGIN_PROJECT_ID} "${PLUGIN_ARTEFACT_GROUP}" "${PLUGIN_ARTIFACTS}";;
     createProject) createProject ${PLUGIN_PROJECT_ID};;
     createVersion) createVersion ${PLUGIN_PROJECT_ID};;
     updateIssues) updateIssues ${PLUGIN_PROJECT_ID};;
     *) echo  "unknown action ${ACTION}";;
 esac
-

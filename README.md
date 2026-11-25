@@ -69,6 +69,8 @@ Creates the project if it does not exist yet and ensures that one issue category
 * `PROJECT_ID` - the identifier of the redmine project to create (required)
 * `PROJECT_NAME` - the name of the project (optional, defaults to the project identifier)
 * `CATEGORY` - the issue category to create in the project (optional, defaults to DRONE_REPO_NAME; set it to an empty value to skip category creation)
+* `PROJECT_PARENT` - the numeric id of the parent project (optional, only applied when the project is actually created)
+* `PROJECT_PUBLIC` - make the project public instead of private (optional; any value except `false`/`0` enables it, only applied when the project is actually created)
 
 #### createVersion
 
