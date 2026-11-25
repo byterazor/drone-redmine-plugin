@@ -10,6 +10,9 @@ At the moment the following tasks are supported:
 - updating branch build artifacts
 - updating release stati
 - updating release artifacts
+- creating projects together with one issue category per repository
+- ensuring that a release version exists in redmine and closing it
+- updating issues referenced in commit messages
 
 In the future more tasks are planned.
 
@@ -36,7 +39,7 @@ This is very early work and may and may not work for you yet.
 * `REDMINE_URL` - the URL to your redmine server (required)
 * `REDMINE_TOKEN` - your Redmine API TOKEN (required) best provided by a secret
 * `PROJECT_ID` - the project id of the redmine project (required)
-* `ACTION` - which action to perform (updateBranchStatus, updateReleaseStatus, updateBranchArtifacts, updateReleaseArtifacts)
+* `ACTION` - which action to perform (updateBranchStatus, updateReleaseStatus, updateBranchArtifacts, updateReleaseArtifacts, createProject, createVersion, updateIssues)
 
 #### updateBranchStatus
 
@@ -58,6 +61,34 @@ This is very early work and may and may not work for you yet.
 * `RELEASE` - the release to use (can be taken from DRONE_TAG)
 * `ARTIFACT_GROUP` - artifacts are organized into groups, just select one suitable for you
 * `ARTIFACTS` - space separated list of artifacts (**at the moment no special characters or spaces are supported**)
+
+#### createProject
+
+Creates the project if it does not exist yet and ensures that one issue category per repository exists in it. The action is idempotent, so it can run on every pipeline.
+
+* `PROJECT_ID` - the identifier of the redmine project to create (required)
+* `PROJECT_NAME` - the name of the project (optional, defaults to the project identifier)
+* `CATEGORY` - the issue category to create in the project (optional, defaults to DRONE_REPO_NAME; set it to an empty value to skip category creation)
+
+#### createVersion
+
+Ensures that the given version exists in the project and closes it. Meant to run on tag pushes, so the release version exists in redmine when the release pipeline finishes.
+
+* `PROJECT_ID` - the project id of the redmine project (required)
+* `RELEASE` - the version to create and close (optional, defaults to DRONE_TAG)
+
+#### updateIssues
+
+Parses the commit messages of the current build for issue references and updates the referenced redmine issues. Keywords are case-insensitive and need a blank or a colon before the `#` (e.g. `fixes #123`, `closes: #456`); one keyword can reference several issues (`fixes #1, #2`).
+
+* `close`, `closes`, `closed`, `closing` set the issue status to `Closed`
+* `fix`, `fixes`, `fixed`, `fixing` set the issue status to `Fixed`
+* all other reference keywords (`ref`, `refs`, `references`, `relates`, ...) only add a note
+
+Every update adds a note in the form `commit <short-sha> <subject> (<link to commit>)`. If an issue is referenced by multiple commits, the strongest keyword wins (close > fix > ref). A single failing issue does not abort the run; the action fails at the end if any issue could not be updated.
+
+* `PROJECT_ID` - the project id of the redmine project (required)
+* the commit range is derived automatically: on tag builds all commits since the previous tag, otherwise the commits between DRONE_COMMIT_BEFORE and DRONE_COMMIT (or just DRONE_COMMIT)
 
 ## Supported Architectures
 - amd64

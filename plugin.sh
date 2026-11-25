@@ -254,6 +254,212 @@ updateReleaseStatus()
 
 }
 
+createProject()
+{
+    local pid=$1
+    if [ -z "$pid" ]; then
+        echo "parameter missing - call createProject <project id>"
+        exit 1
+    fi
+
+    local pname="${PLUGIN_PROJECT_NAME:-$pid}"
+    local category="${PLUGIN_CATEGORY-${DRONE_REPO_NAME}}"
+
+    if ! redmine-cli project create-if-not-exist "$pname" "$pid"; then
+        echo "error: failed to create project ${pid}"
+        exit 1
+    fi
+
+    if [ -n "$category" ]; then
+        if ! redmine-cli issue-category create-if-not-exist "$pid" "$category"; then
+            echo "error: failed to create issue category ${category} in project ${pid}"
+            exit 1
+        fi
+    fi
+}
+
+createVersion()
+{
+    local pid=$1
+    if [ -z "$pid" ]; then
+        echo "parameter missing - call createVersion <project id>"
+        exit 1
+    fi
+
+    local version="${PLUGIN_RELEASE:-${DRONE_TAG}}"
+    if [ -z "$version" ]; then
+        echo "error: no version given (set RELEASE or DRONE_TAG)"
+        exit 1
+    fi
+
+    if ! redmine-cli versions create-if-not-exist "$pid" "$version"; then
+        echo "error: failed to create version ${version} in project ${pid}"
+        exit 1
+    fi
+
+    if ! redmine-cli versions update "$version" --project "$pid" --status closed; then
+        echo "error: failed to close version ${version} in project ${pid}"
+        exit 1
+    fi
+}
+
+getCommitRange()
+{
+    if [ -n "$DRONE_TAG" ]; then
+        git fetch -t
+        local startTag=$(git describe --tags --abbrev=0 "${DRONE_TAG}^" 2>/dev/null)
+        if [ -z "$startTag" ]; then
+            startTag=$(git rev-list --max-parents=0 "${DRONE_TAG}" 2>/dev/null)
+        fi
+        echo "${startTag}..${DRONE_TAG}"
+    elif [ -n "$DRONE_COMMIT_BEFORE" ]; then
+        echo "${DRONE_COMMIT_BEFORE}..${DRONE_COMMIT}"
+    elif [ -n "$DRONE_COMMIT" ]; then
+        echo "${DRONE_COMMIT}"
+    fi
+}
+
+listCommits()
+{
+    local range=$1
+    case "$range" in
+        *..*) git rev-list "$range";;
+        *)    git rev-list -n 1 "$range";;
+    esac
+}
+
+extractReferences()
+{
+    mawk '
+    {
+        line = tolower($0)
+        while (match(line, /(close[sd]?|closing|fix[a-z]*|ref[a-z]*)[ \t:]+#/)) {
+            kw = substr(line, RSTART, RLENGTH)
+            sub(/[ \t:]+#$/, "", kw)
+            if (kw ~ /^close/)      g = "close"
+            else if (kw ~ /^fix/)   g = "fix"
+            else                    g = "ref"
+            rest = substr(line, RSTART + RLENGTH)
+            n = 0
+            while (substr(rest, n + 1, 1) ~ /^[0-9]$/) n++
+            if (n > 0) {
+                printf "%s\t%s\n", substr(rest, 1, n), g
+                rest = substr(rest, n + 1)
+                while (1) {
+                    while (rest ~ /^[ \t,&]/) rest = substr(rest, 2)
+                    if (rest !~ /^#[0-9]+/) break
+                    rest = substr(rest, 2)
+                    n = 0
+                    while (substr(rest, n + 1, 1) ~ /^[0-9]$/) n++
+                    printf "%s\t%s\n", substr(rest, 1, n), g
+                    rest = substr(rest, n + 1)
+                }
+            }
+            line = substr(line, RSTART + RLENGTH)
+        }
+    }'
+}
+
+parseCommitRefs()
+{
+    local sha=$1
+    local short subject body url refs
+
+    short=$(git log -1 --format=%h "$sha")
+    subject=$(git log -1 --format=%s "$sha")
+    body=$(git log -1 --format=%b "$sha")
+
+    url=""
+    if [ -n "$DRONE_REPO_LINK" ]; then
+        url="${DRONE_REPO_LINK}/commit/${sha}"
+    fi
+
+    refs=$(printf '%s\n%s\n' "$subject" "$body" | extractReferences)
+    if [ -z "$refs" ]; then
+        return 0
+    fi
+
+    while IFS=$'\t' read -r id grp; do
+        [ -z "$id" ] && continue
+        printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$grp" "$short" "$subject" "$url"
+    done <<< "$refs"
+}
+
+dedupeRefs()
+{
+    mawk -F'\t' '
+    {
+        p = ($2 == "close") ? 3 : (($2 == "fix") ? 2 : 1)
+        if (!($1 in prio) || p > prio[$1]) {
+            if (!($1 in prio)) idx[++n] = $1
+            prio[$1] = p
+            line[$1] = $0
+        }
+    }
+    END { for (i = 1; i <= n; i++) print line[idx[i]] }
+    '
+}
+
+updateIssues()
+{
+    local pid=$1
+    if [ -z "$pid" ]; then
+        echo "parameter missing - call updateIssues <project id>"
+        exit 1
+    fi
+
+    local range=$(getCommitRange)
+    if [ -z "$range" ]; then
+        echo "error: no commit range available (need a tag, DRONE_COMMIT_BEFORE or DRONE_COMMIT)"
+        exit 1
+    fi
+
+    local commits=$(listCommits "$range")
+    if [ -z "$commits" ]; then
+        echo "error: no commits found for range ${range}"
+        exit 1
+    fi
+
+    local refs=$(for sha in $commits; do parseCommitRefs "$sha"; done | dedupeRefs)
+
+    if [ -z "$refs" ]; then
+        echo "no issue references found in ${range}"
+        return 0
+    fi
+
+    local status note failures=0
+    while IFS=$'\t' read -r id grp short subject url; do
+        [ -z "$id" ] && continue
+        case "$grp" in
+            close) status="Closed";;
+            fix)   status="Fixed";;
+            *)     status="";;
+        esac
+
+        note="commit ${short} ${subject}"
+        if [ -n "$url" ]; then
+            note="${note} (${url})"
+        fi
+
+        if [ -n "$status" ]; then
+            if ! redmine-cli issue update "$id" --status "$status" --note "$note" </dev/null; then
+                echo "error: failed to update issue ${id}"
+                failures=$((failures + 1))
+            fi
+        else
+            if ! redmine-cli issue update "$id" --note "$note" </dev/null; then
+                echo "error: failed to update issue ${id}"
+                failures=$((failures + 1))
+            fi
+        fi
+    done <<< "$refs"
+
+    if [ $failures -gt 0 ]; then
+        echo "error: ${failures} issue update(s) failed"
+        exit 1
+    fi
+}
+
 #
 # main  program
 #
@@ -278,5 +484,9 @@ case ${ACTION} in
     updateReleaseStatus) updateReleaseStatus ${PLUGIN_RELEASE} ${PLUGIN_PROJECT_ID} ;;
     updateBranchArtifacts) updateBranchArtifacts ${PLUGIN_BRANCH} ${PLUGIN_PROJECT_ID} "${PLUGIN_ARTEFACT_GROUP}" "${PLUGIN_ARTIFACTS}" ;;
     updateReleaseArtifacts) updateReleaseArtifacts ${PLUGIN_RELEASE} ${PLUGIN_PROJECT_ID} "${PLUGIN_ARTEFACT_GROUP}" "${PLUGIN_ARTIFACTS}";; 
+    createProject) createProject ${PLUGIN_PROJECT_ID};;
+    createVersion) createVersion ${PLUGIN_PROJECT_ID};;
+    updateIssues) updateIssues ${PLUGIN_PROJECT_ID};;
     *) echo  "unknown action ${ACTION}";;
 esac
+
